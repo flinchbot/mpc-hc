@@ -89,7 +89,7 @@ private:
 
     CPlaylistItem* GetCur();
 
-    void AddItem(CString fn, bool insertAtCurrent = false);
+    void AddItem(CString fn, bool insertAtCurrent = false, bool deferMetadata = false);
     void AddItem(CString fn, CAtlList<CString>* subs);
     void AddItem(CAtlList<CString>& fns, CAtlList<CString>* subs = nullptr, CString label = _T(""), CString ydl_src = _T(""), CString ydl_ua = _T(""), CString cue = _T(""), CAtlList<CYoutubeDLInstance::YDLSubInfo>* ydl_subs = nullptr);
     bool AddItemNoDuplicate(CString fn, bool insertAtCurrent = false);

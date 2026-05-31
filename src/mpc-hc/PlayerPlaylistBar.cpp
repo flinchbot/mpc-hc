@@ -20,6 +20,8 @@
  */
 
 #include "stdafx.h"
+#include <unordered_set>
+#include <string>
 #include <cmath>
 #include <afxinet.h>
 #include "mplayerc.h"
@@ -252,7 +254,7 @@ void CPlayerPlaylistBar::LoadDuration(POSITION pos) {
     }
 }
 
-void CPlayerPlaylistBar::AddItem(CString fn, bool insertAtCurrent /*= false*/)
+void CPlayerPlaylistBar::AddItem(CString fn, bool insertAtCurrent /*= false*/, bool deferMetadata /*= false*/)
 {
     if (fn.IsEmpty()) {
         return;
@@ -260,7 +262,9 @@ void CPlayerPlaylistBar::AddItem(CString fn, bool insertAtCurrent /*= false*/)
 
     CPlaylistItem pli;
     pli.m_fns.AddTail(fn);
-    pli.AutoLoadFiles();
+    if (!deferMetadata) {
+        pli.AutoLoadFiles();  // [FORK] deferred to play time (GetCurOMD) for bulk folder adds
+    }
 
     POSITION pos;
     if (insertAtCurrent && m_insertingPos != nullptr) {
@@ -268,7 +272,9 @@ void CPlayerPlaylistBar::AddItem(CString fn, bool insertAtCurrent /*= false*/)
     } else {
         pos = m_pl.AddTail(pli);
     }
-    LoadDuration(pos);
+    if (!deferMetadata) {
+        LoadDuration(pos);  // [FORK] deferred for bulk folder adds (avoids per-file MediaInfo open over NAS)
+    }
 }
 
 void CPlayerPlaylistBar::AddItem(CString fn, CAtlList<CString>* subs)
@@ -425,12 +431,28 @@ bool CPlayerPlaylistBar::AddFromFilemask(CString mask, bool recurse_dirs, bool i
 
     std::set<CString, CStringUtils::LogicalLess> filelist;
     if (m_pMainFrame->WildcardFileSearch(mask, filelist, recurse_dirs)) {
-        auto it = filelist.begin();
-        while (it != filelist.end()) {
-            if (AddItemNoDuplicate(*it, insertAtCurrent)) {
+        // [FORK CUSTOMIZATION] Brutal bulk-add for large folders (7000+ files):
+        //  * O(1) hash-set de-dup instead of AddItemNoDuplicate()'s O(n^2) playlist rescan.
+        //  * Defer per-item AutoLoadFiles()/LoadDuration() to play time (GetCurOMD re-runs
+        //    AutoLoadFiles), eliminating thousands of synchronous NAS round-trips on populate.
+        std::unordered_set<std::wstring> existing;
+        POSITION epos = m_pl.GetHeadPosition();
+        while (epos) {
+            const CPlaylistItem& epli = m_pl.GetNext(epos);
+            POSITION spos = epli.m_fns.GetHeadPosition();
+            while (spos) {
+                CString c = epli.m_fns.GetNext(spos);
+                c.MakeLower();
+                existing.insert(std::wstring(c.GetString()));
+            }
+        }
+        for (auto it = filelist.begin(); it != filelist.end(); ++it) {
+            CString low = *it;
+            low.MakeLower();
+            if (existing.insert(std::wstring(low.GetString())).second) {
+                AddItem(*it, insertAtCurrent, true /* deferMetadata */);
                 added = true;
             }
-            it++;
         }
     }
 
