@@ -1670,7 +1670,8 @@ void CAppSettings::LoadSettings()
     eCaptionMenuMode = MODE_FRAMEONLY;
     fHideNavigation = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDENAVIGATION, FALSE);
     bHideCaptureSettings = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDECAPTURESETTINGS, FALSE);
-    nCS = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_CONTROLSTATE, CS_SEEKBAR | CS_TOOLBAR | CS_STATUSBAR);
+    // [FORK CUSTOMIZATION] Hide Status + Info bars by default (keep seek bar + controls).
+    nCS = CS_SEEKBAR | CS_TOOLBAR;
     iDefaultVideoSize = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_DEFAULTVIDEOFRAME, DVS_FROMINSIDE);
     fKeepAspectRatio = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_KEEPASPECTRATIO, TRUE);
     fCompMonDeskARDiff = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_COMPMONDESKARDIFF, FALSE);
@@ -2282,10 +2283,8 @@ void CAppSettings::LoadSettings()
         bRenderSSAUsingLibass = true;
     }
 
-    nDefaultToolbarSize = pApp->GetProfileInt(IDS_R_PLAYERTOOLBAR, IDS_RS_DEFAULTTOOLBARSIZE, 0);
-    if (nDefaultToolbarSize < 16) {
-        nDefaultToolbarSize = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_DEFAULTTOOLBARSIZE, 24); // old location
-    }
+    // [FORK CUSTOMIZATION] Thinner control toolbar: force smallest button size (16px).
+    nDefaultToolbarSize = 16;
 
     nToolbarAction1 = pApp->GetProfileInt(IDS_R_PLAYERTOOLBAR, IDS_RS_TOOLBARACTION1, 0);
     nToolbarAction2 = pApp->GetProfileInt(IDS_R_PLAYERTOOLBAR, IDS_RS_TOOLBARACTION2, 0);
