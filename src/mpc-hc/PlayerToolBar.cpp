@@ -439,9 +439,9 @@ void CPlayerToolBar::PlaceButtons(bool loadSavedLayout) {
     CToolBarCtrl& tb = GetToolBarCtrl();
 
     auto addButton = [&](int cmdid) {
-        // [FORK CUSTOMIZATION] Never add fast-forward / rewind (rate) buttons,
-        // even from a saved custom toolbar layout.
-        if (cmdid == ID_PLAY_DECRATE || cmdid == ID_PLAY_INCRATE) return;
+        // [FORK CUSTOMIZATION] Never add fast-forward / rewind (rate) or Frame Step
+        // buttons, even from a saved custom toolbar layout.
+        if (cmdid == ID_PLAY_DECRATE || cmdid == ID_PLAY_INCRATE || cmdid == ID_PLAY_FRAMESTEP) return;
         auto& svgInfo = supportedSvgButtons[cmdid];
         TBBUTTON button = GetStandardButton(cmdid);
         tb.AddButtons(1, &button);
@@ -488,7 +488,8 @@ void CPlayerToolBar::PlaceButtons(bool loadSavedLayout) {
         // addButton(ID_PLAY_DECRATE);
         // addButton(ID_PLAY_INCRATE);
         addButton(ID_NAVIGATE_SKIPFORWARD);
-        addButton(ID_PLAY_FRAMESTEP);
+        // [FORK CUSTOMIZATION] Frame Step button removed.
+        //addButton(ID_PLAY_FRAMESTEP);
     }
 
     addButton(ID_DUMMYSEPARATOR);

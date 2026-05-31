@@ -1009,6 +1009,40 @@ int CMainFrame::OnNcCreate(LPCREATESTRUCT lpCreateStruct)
     return __super::OnNcCreate(lpCreateStruct);
 }
 
+// [FORK CUSTOMIZATION] Recursively remove all subtitle-related entries from a menu,
+// drop any submenu left empty (e.g. the now-empty "Subtitles" popup), and collapse
+// redundant separators.
+static void StripSubtitleMenuItems(CMenu* pMenu)
+{
+    if (!pMenu || !::IsMenu(pMenu->GetSafeHmenu())) {
+        return;
+    }
+    static const UINT subIDs[] = {
+        ID_FILE_SUBTITLES_LOAD, ID_FILE_SUBTITLES_SAVE, ID_FILE_SUBTITLES_DOWNLOAD,
+        ID_SUBTITLES, ID_VIEW_SUBRESYNC, ID_NAVIGATE_SUBPICTUREMENU
+    };
+    for (int i = (int)pMenu->GetMenuItemCount() - 1; i >= 0; --i) {
+        if (CMenu* pSub = pMenu->GetSubMenu(i)) {
+            StripSubtitleMenuItems(pSub);
+            if (pSub->GetMenuItemCount() == 0) {
+                pMenu->DeleteMenu(i, MF_BYPOSITION);
+            }
+        } else {
+            UINT id = pMenu->GetMenuItemID(i);
+            for (UINT sid : subIDs) {
+                if (id == sid) { pMenu->DeleteMenu(i, MF_BYPOSITION); break; }
+            }
+        }
+    }
+    for (int i = (int)pMenu->GetMenuItemCount() - 1; i >= 0; --i) {
+        if (pMenu->GetMenuItemID(i) == 0) { // separator
+            bool atEdge = (i == 0 || i == (int)pMenu->GetMenuItemCount() - 1);
+            bool prevSep = (i > 0 && pMenu->GetMenuItemID(i - 1) == 0);
+            if (atEdge || prevSep) { pMenu->DeleteMenu(i, MF_BYPOSITION); }
+        }
+    }
+}
+
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 {
     if (__super::OnCreate(lpCreateStruct) == -1) {
@@ -1033,6 +1067,8 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
     VERIFY(m_popupMenu.LoadMenu(IDR_POPUP));
     VERIFY(m_mainPopupMenu.LoadMenu(IDR_POPUPMAIN));
+    StripSubtitleMenuItems(&m_popupMenu);      // [FORK CUSTOMIZATION]
+    StripSubtitleMenuItems(&m_mainPopupMenu);  // [FORK CUSTOMIZATION]
     CreateDynamicMenus();
 
     // create a view to occupy the client area of the frame
@@ -23421,6 +23457,11 @@ void CMainFrame::ReloadMenus() {
     //we don't detach because we retain the cmenu
     //m_hMenuDefault = defaultMenu.Detach();
     m_hMenuDefault = defaultMPCThemeMenu->GetSafeHmenu();
+
+    // [FORK CUSTOMIZATION] strip subtitle entries from all menus after (re)load
+    StripSubtitleMenuItems(&m_popupMenu);
+    StripSubtitleMenuItems(&m_mainPopupMenu);
+    StripSubtitleMenuItems(defaultMPCThemeMenu);
 
     m_popupMenu.fulfillThemeReqs();
     m_mainPopupMenu.fulfillThemeReqs();
