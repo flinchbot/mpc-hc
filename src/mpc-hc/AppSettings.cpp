@@ -1664,7 +1664,10 @@ void CAppSettings::LoadSettings()
 
     CreateCommands();
 
-    eCaptionMenuMode = static_cast<MpcCaptionState>(pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDECAPTIONMENU, MODE_SHOWCAPTIONMENU));
+    // [FORK CUSTOMIZATION] Pin caption mode to FRAMEONLY: no title bar, no menu bar,
+    // thin resizable frame retained. Window is moved by dragging the video (OnNcHitTest).
+    // Ignores the stored/toggled value so the player always starts frame-only.
+    eCaptionMenuMode = MODE_FRAMEONLY;
     fHideNavigation = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDENAVIGATION, FALSE);
     bHideCaptureSettings = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDECAPTURESETTINGS, FALSE);
     nCS = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_CONTROLSTATE, CS_SEEKBAR | CS_TOOLBAR | CS_STATUSBAR);
