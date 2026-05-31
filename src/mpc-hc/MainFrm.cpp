@@ -15559,7 +15559,7 @@ void CMainFrame::OpenSetupStatusBar()
 // Called from GraphThread
 void CMainFrame::OpenSetupWindowTitle(bool reset /*= false*/)
 {
-    CString title(StrRes(IDR_MAINFRAME));
+    CString title(_T("flinchbot-MPC-HC"));  // [FORK CUSTOMIZATION] app name shown in taskbar/Alt-Tab
 #ifdef MPCHC_LITE
     title += _T(" Lite");
 #endif

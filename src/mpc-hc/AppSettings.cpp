@@ -1825,7 +1825,9 @@ void CAppSettings::LoadSettings()
     fExitFullScreenAtTheEnd = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_EXITFULLSCREENATTHEEND, TRUE);
 
     fRememberWindowPos = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_REMEMBERWINDOWPOS, FALSE);
-    fRememberWindowSize = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_REMEMBERWINDOWSIZE, FALSE);
+    // [FORK CUSTOMIZATION] Default ON: keep the window size and scale the video to fit it
+    // (DVS_FROMINSIDE) instead of resizing the player to the video. Forced each launch.
+    fRememberWindowSize = true;
     str = pApp->GetProfileString(IDS_R_SETTINGS, IDS_RS_PANSCANZOOM);
     if (_stscanf_s(str, _T("%lf,%lf"), &dZoomX, &dZoomY) == 2 &&
             dZoomX >= 0.196 && dZoomX <= 5.0 &&
@@ -1857,7 +1859,8 @@ void CAppSettings::LoadSettings()
     nLastWindowType = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_LASTWINDOWTYPE, SIZE_RESTORED);
     fLastFullScreen = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_LASTFULLSCREEN, FALSE);
 
-    bShufflePlaylistItems = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SHUFFLEPLAYLISTITEMS, FALSE);
+    // [FORK CUSTOMIZATION] Default ON: playlist starts shuffled each launch (toggleable per-session).
+    bShufflePlaylistItems = true;
     bRememberPlaylistItems = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_REMEMBERPLAYLISTITEMS, TRUE);
     bHidePlaylistFullScreen = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDEPLAYLISTFULLSCREEN, FALSE);
     bFavRememberPos = !!pApp->GetProfileInt(IDS_R_FAVORITES, IDS_RS_FAV_REMEMBERPOS, TRUE);
