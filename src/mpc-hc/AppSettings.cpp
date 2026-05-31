@@ -1735,8 +1735,12 @@ void CAppSettings::LoadSettings()
     eHideFullscreenControlsPolicy =
         static_cast<HideFullscreenControlsPolicy>(pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDE_FULLSCREEN_CONTROLS_POLICY, 1));
     uHideFullscreenControlsDelay = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDE_FULLSCREEN_CONTROLS_DELAY, 0);
-    bHideFullscreenDockedPanels = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDE_FULLSCREEN_DOCKED_PANELS, TRUE);
-    bHideWindowedControls = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDE_WINDOWED_CONTROLS, FALSE);
+    // [FORK CUSTOMIZATION] Keep docked panels (e.g. the playlist) pinned: only the bottom
+    // controls auto-hide, not the docked panels.
+    bHideFullscreenDockedPanels = false;
+    // [FORK CUSTOMIZATION] Auto-hide the bottom controls in windowed mode too; reveal on
+    // mouse-over (policy already defaults to SHOW_WHEN_HOVERED, bHideFullscreenControls=true).
+    bHideWindowedControls = true;
 
     bHideWindowedMousePointer = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDE_WINDOWED_MOUSE_POINTER, TRUE);
 
