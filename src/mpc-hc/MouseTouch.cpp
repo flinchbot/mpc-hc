@@ -658,6 +658,15 @@ void CMouse::InternalOnMouseMove(UINT nFlags, const CPoint& point)
         MVRMove(nFlags, point);
     }
 
+    // [FORK CUSTOMIZATION] Reveal ONLY the playing file's name (top-left OSD) whenever
+    // the mouse moves over the video (windowed / non-exclusive).
+    if (!m_bD3DFS && m_pMainFrame->GetLoadState() == MLS::LOADED) {
+        const CString name = m_pMainFrame->GetFileName();
+        if (!name.IsEmpty()) {
+            m_pMainFrame->m_OSD.DisplayMessage(OSD_TOPLEFT, name, 2000);
+        }
+    }
+
     m_pMainFrame->UpdateControlState(CMainFrame::UPDATE_CONTROLS_VISIBILITY);
 }
 
