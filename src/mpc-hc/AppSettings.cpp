@@ -2188,7 +2188,9 @@ void CAppSettings::LoadSettings()
     iSaturation           = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_COLOR_SATURATION, 0);
 
     fShowOSD              = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SHOWOSD, TRUE);
-    fShowCurrentTimeInOSD = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SHOW_CURRENT_TIME_OSD, FALSE);
+    // [FORK CUSTOMIZATION] Never show running/total time in the OSD (removes the
+    // upper-left timer, and stops it overwriting the filename popup below).
+    fShowCurrentTimeInOSD = false;
 
     nOSDTransparency      = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_OSD_TRANSPARENCY, 64);
     nOSDBorder            = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_OSD_BORDER, 1);
@@ -2287,8 +2289,9 @@ void CAppSettings::LoadSettings()
         bRenderSSAUsingLibass = true;
     }
 
-    // [FORK CUSTOMIZATION] Thinner control toolbar: force smallest button size (16px).
-    nDefaultToolbarSize = 16;
+    // [FORK CUSTOMIZATION] Regular control-button size (controls auto-hide now, so there's
+    // no screen real-estate reason to keep them small).
+    nDefaultToolbarSize = 24;
 
     nToolbarAction1 = pApp->GetProfileInt(IDS_R_PLAYERTOOLBAR, IDS_RS_TOOLBARACTION1, 0);
     nToolbarAction2 = pApp->GetProfileInt(IDS_R_PLAYERTOOLBAR, IDS_RS_TOOLBARACTION2, 0);
