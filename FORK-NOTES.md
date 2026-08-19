@@ -67,3 +67,15 @@ finds them up-to-date and links. The 3 asm projects and their x64 files:
 - **VirtualDub/Kasumi** (yasm): a64_resample.asm64
 
 The plain 32-bit `.asm` siblings are `ExcludedFromBuild` for x64 — do not assemble those.
+
+### Other build quirks (seen during the 2.8.0 sync, 2026-08)
+- **Stale PCH after an MSVC update** — `error C1853: ... precompiled header file is from a
+  different version of the compiler` across many projects. Fix: delete all `*.pch` under
+  `bin\obj\` and rebuild (no full clean needed).
+- **cmd "input line is too long" in build_lavfilters.bat** — happens when the invoking shell's
+  `PATH` is already large (the batch prepends MSYS/mingw dirs and overflows cmd's 8191-char
+  limit). Fix: launch `build.bat` with a lean PATH (System32 + git + python is enough; the
+  build scripts add their own toolchain dirs).
+- **Nondeterministic mingw gcc 15.2 ICE building ffmpeg** — `internal compiler error: in
+  try_forward_edges, at cfgcleanup.cc:580` on a *different* file each run. The ffmpeg build is
+  incremental, so simply re-running `build.bat` makes forward progress; 1–2 retries complete it.
