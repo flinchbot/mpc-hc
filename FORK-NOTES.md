@@ -57,6 +57,11 @@ build.bat Lite Release x64   # Lite; output: "bin\mpc-hc_x64 Lite\mpc-hc64.exe" 
 ```
 Note: "Lite" still compiles ffmpeg/LAV — it is not codec-free.
 
+Install: `powershell -ExecutionPolicy Bypass -File install.ps1` (add `-Lite` for the Lite build)
+copies the build into `C:\Program Files\MPC-HC`, overwriting the old build. It elevates itself,
+closes a running player, keeps files only in the install folder (MPCVR, Shaders, uninstaller)
+and skips `*.pdb/*.exp/*.lib/*.ilk`.
+
 ### VS 2026 asm quirk (parallel build)
 Under VS 2026's MSBuild with `/maxcpucount`, the custom YASM/NASM tasks spuriously fail
 ("exited with code 1") on the first not-yet-built `.asm`/`.asm64` in each asm project, though the
