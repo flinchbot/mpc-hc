@@ -61,14 +61,14 @@
 
 class CNullAudioRenderer;
 
-CFGManager::CFGManager(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd, bool IsPreview)
+CFGManager::CFGManager(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd, bool IsPreview, bool IsCapture)
     : CUnknown(pClassName, nullptr)
     , m_dwRegister(0)
 	, m_hWnd(hWnd)
 	, m_bIsPreview(IsPreview)
     , m_bPreviewSupportsRotation(false)
     , m_ignoreVideo(false)
-    , m_bIsCapture(false)
+    , m_bIsCapture(IsCapture)
     , m_source()
     , m_transform()
     , m_override()
@@ -259,7 +259,7 @@ HRESULT CFGManager::EnumSourceFilters(LPCWSTR lpcwstrFileName, CFGFilterList& fl
         cfn = cfn.Mid(4);
     }
     CStringW protocol = cfn.Left(cfn.Find(':') + 1).TrimRight(':').MakeLower();
-    CStringW ext = CPathW(fn).GetExtension().MakeLower();
+    CStringW ext = CLongPath(fn).GetExtension().MakeLower();
 
     HANDLE hFile = INVALID_HANDLE_VALUE;
 
@@ -789,6 +789,9 @@ HRESULT CFGManager::Connect(IPin* pPinOut, IPin* pPinIn, bool bContinueRender)
                 continue;
             }
 
+#if !WIN64
+            if (pBF != (IBaseFilter*)0x3) // invalid pointer value, weird x86 bug
+#endif
             pBFs.AddTail(pBF);
         }
         EndEnumFilters;
@@ -1039,6 +1042,9 @@ HRESULT CFGManager::Connect(IPin* pPinOut, IPin* pPinIn, bool bContinueRender)
                             CMPlayerCApp* pApp = AfxGetMyApp();
                             pApp->WriteProfileInt(IDS_R_INTERNAL_LAVVIDEO_HWACCEL, _T("HWAccel"), 0);
                         }
+                    } else if (hr == E_ACCESSDENIED && (filter == GUID_LAVSplitter || filter == GUID_LAVAudio || filter == GUID_LAVVideo)) {
+                        // DLL was missing or loading was blocked
+                        m_filter_blocked = true;
                     }
                 }
                 continue;
@@ -1585,6 +1591,12 @@ STDMETHODIMP CFGManager::NukeDownstream(IUnknown* pUnk)
             NukeDownstream(pPin);
         }
         EndEnumPins;
+
+        // The interfaces collected while connecting were handed out by
+        // filters downstream and are stale once they are gone. Holding
+        // them kept the old presenter alive and let FindInterface()
+        // hand it out again.
+        m_pUnks.RemoveAll();
     } else if (CComQIPtr<IPin> pPin = pUnk) {
         CComPtr<IPin> pPinTo;
         if (S_OK == IsPinDirection(pPin, PINDIR_OUTPUT)
@@ -2148,7 +2160,7 @@ void CFGManagerCustom::InsertOtherInternalSourcefilters(bool IsPreview)
     CString ext;
     bool willuselav = false; // some of the most common ext that certainly won't use any of the filters below
     if (isfile) {
-        ext = CPath(m_input).GetExtension().MakeLower();
+        ext = CLongPath(m_input).GetExtension().MakeLower();
         willuselav = (ext == L".mkv") || (ext == L".mp4") || (ext == L".avi") || (ext == L".mp3") || (ext == L".m4a") || (ext == L".ogg") || (ext == L".flac");
     }
 
@@ -2816,8 +2828,8 @@ void CFGManagerCustom::InsertSubtitleFilters(bool IsPreview)
 //  CFGManagerCustom
 //
 
-CFGManagerCustom::CFGManagerCustom(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd, bool IsPreview)
-    : CFGManager(pClassName, pInputFileURL, hWnd, IsPreview)
+CFGManagerCustom::CFGManagerCustom(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd, bool IsPreview, bool IsCapture)
+    : CFGManager(pClassName, pInputFileURL, hWnd, IsPreview, IsCapture)
 {
     const CAppSettings& s = AfxGetAppSettings();
 
@@ -2926,8 +2938,8 @@ STDMETHODIMP CFGManagerCustom::AddFilter(IBaseFilter* pBF, LPCWSTR pName)
 //  CFGManagerPlayer
 //
 
-CFGManagerPlayer::CFGManagerPlayer(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd, bool IsPreview)
-    : CFGManagerCustom(pClassName, pInputFileURL, hWnd, IsPreview)
+CFGManagerPlayer::CFGManagerPlayer(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd, bool IsPreview, bool IsCapture)
+    : CFGManagerCustom(pClassName, pInputFileURL, hWnd, IsPreview, IsCapture)
     , m_hWnd(hWnd)
 {
     TRACE(_T("CFGManagerPlayer::CFGManagerPlayer on thread: %lu\n"), GetCurrentThreadId());
@@ -2981,6 +2993,10 @@ CFGManagerPlayer::CFGManagerPlayer(LPCWSTR pClassName, LPCWSTR pInputFileURL, HW
             case VIDRNDT_DS_MPCVR:
                 if (!m_bIsCapture) {
                     m_transform.AddTail(DEBUG_NEW CFGFilterVideoRenderer(m_hWnd, CLSID_MPCVRAllocatorPresenter, StrRes(IDS_PPAGE_OUTPUT_MPCVR), renderer_merit));
+                } else if (IsCLSIDRegistered(CLSID_EnhancedVideoRenderer)) {
+                    m_transform.AddTail(DEBUG_NEW CFGFilterVideoRenderer(m_hWnd, CLSID_EVRAllocatorPresenter, StrRes(IDS_PPAGE_OUTPUT_EVR_CUSTOM), renderer_merit));
+                } else {
+                    m_transform.AddTail(DEBUG_NEW CFGFilterVideoRenderer(m_hWnd, CLSID_VMR9AllocatorPresenter, StrRes(IDS_PPAGE_OUTPUT_VMR9RENDERLESS), renderer_merit));
                 }
                 break;
             case VIDRNDT_DS_NULL_COMP:
@@ -3234,7 +3250,7 @@ STDMETHODIMP CFGManagerDVD::AddSourceFilter(LPCWSTR lpcwstrFileName, LPCWSTR lpc
 //
 
 CFGManagerCapture::CFGManagerCapture(HWND hWnd)
-    : CFGManagerPlayer(_T("CFGManagerCapture"), L"", hWnd)
+    : CFGManagerPlayer(_T("CFGManagerCapture"), L"", hWnd, false, true)
 {
     const CAppSettings& s = AfxGetAppSettings();
 
@@ -3244,8 +3260,6 @@ CFGManagerCapture::CFGManagerCapture(HWND hWnd)
         pFGF->AddType(MEDIATYPE_Video, MEDIASUBTYPE_NULL);
         m_transform.AddTail(pFGF);
     }
-
-    m_bIsCapture = True;
 }
 
 //

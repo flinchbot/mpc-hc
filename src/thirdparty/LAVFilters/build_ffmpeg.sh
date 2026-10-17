@@ -31,7 +31,8 @@ fi
 THIRDPARTYPREFIX=${BASEDIR}/thirdparty
 FFMPEG_BUILD_PATH=${THIRDPARTYPREFIX}/ffmpeg
 FFMPEG_LIB_PATH=${BASEDIR}/lib
-NUMBER_OF_PROCESSORS=4
+# make jobs: 4 unless MPCHC_LAV_JOBS is set (build.user.bat)
+NUMBER_OF_PROCESSORS=${MPCHC_LAV_JOBS:-4}
 
 make_dirs() {
   mkdir -p ${FFMPEG_LIB_PATH}
@@ -92,20 +93,19 @@ configure() {
     --enable-dxva2                  \
     --enable-zlib                   \
     --build-suffix=-lav             \
+    --disable-stripping             \
     --arch=${arch}"
 
   if [ "${COMPILER}" == "GCC" ]; then
     OPTIONS="${OPTIONS}             \
     --disable-debug                 \
-    --enable-bzlib                  \
     --enable-gnutls                 \
     --enable-gmp                    \
     --enable-libdav1d               \
     --enable-libspeex               \
     --enable-libopencore-amrnb      \
     --enable-libopencore-amrwb      \
-    --enable-libxml2                \
-    --disable-stripping"
+    --enable-libxml2"
   fi
   
   if [ "${COMPILER}" == "MSVC" ]; then

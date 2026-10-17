@@ -20,6 +20,7 @@
 
 #include "stdafx.h"
 #include "PlayerNavigationDialog.h"
+#include "PlayerBar.h"
 #include "DSUtil.h"
 #include "mplayerc.h"
 #include "MainFrm.h"
@@ -256,10 +257,19 @@ void CPlayerNavigationDialog::OnContextMenu(CWnd* pWnd, CPoint point)
     }
     m.AppendMenu(MF_STRING | (channelCount > 0 ? MF_ENABLED : (MF_DISABLED | MF_GRAYED)), M_REMOVE_ALL, ResStr(IDS_NAVIGATION_REMOVE_ALL));
 
-    if (AppNeedsThemedControls()) {
+    if (AppIsThemeLoaded()) {
         m.fulfillThemeReqs();
     }
+    //this dialog is the menu owner, which bypasses CPlayerBar::OnEnterMenuLoop,
+    //so we set the flag on the owning bar directly to keep it from autohiding
+    CPlayerBar* pBar = DYNAMIC_DOWNCAST(CPlayerBar, GetParent());
+    if (pBar) {
+        pBar->SetHasActivePopup(true);
+    }
     int nID = (int)m.TrackPopupMenu(TPM_LEFTBUTTON | TPM_RETURNCMD, point.x, point.y, this);
+    if (pBar) {
+        pBar->SetHasActivePopup(false);
+    }
 
     try {
         switch (nID) {

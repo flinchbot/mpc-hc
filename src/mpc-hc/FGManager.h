@@ -56,6 +56,8 @@ private:
 
     bool m_aborted;
 
+    bool m_filter_blocked = false;
+
     CStreamPath m_streampath;
     CAutoPtrArray<CStreamDeadEnd> m_deadends;
 
@@ -130,7 +132,7 @@ protected:
     CStringW m_input; // used as hint to determine which filters to use
 
 public:
-	CFGManager(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd = 0, bool IsPreview = false);
+	CFGManager(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd = 0, bool IsPreview = false, bool IsCapture = false);
     virtual ~CFGManager();
     HRESULT RenderRFSFileEntry(LPCWSTR lpcwstrFileName, LPCWSTR lpcwstrPlayList, CStringW entryRFS);
     bool PreviewSupportsRotation() { return m_bPreviewSupportsRotation; }
@@ -140,6 +142,8 @@ public:
 
     void SetUserAgent(CString ua) { m_useragent = ua; };
     void SetReferrer(CString ref) { m_referrer = ref; };
+
+    bool GetInternalFilterLoadingBlocked() { return m_filter_blocked; };
 
     DECLARE_IUNKNOWN;
     STDMETHODIMP NonDelegatingQueryInterface(REFIID riid, void** ppv);
@@ -161,7 +165,7 @@ public:
     void InsertBlockedFilters();
 
 public:
-	CFGManagerCustom(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd = 0, bool IsPreview = false);
+	CFGManagerCustom(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd = 0, bool IsPreview = false, bool IsCapture = false);
 };
 
 class CFGManagerPlayer : public CFGManagerCustom
@@ -174,7 +178,7 @@ protected:
     STDMETHODIMP ConnectDirect(IPin* pPinOut, IPin* pPinIn, const AM_MEDIA_TYPE* pmt);
 
 public:
-	CFGManagerPlayer(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd, bool IsPreview = false);
+	CFGManagerPlayer(LPCWSTR pClassName, LPCWSTR pInputFileURL, HWND hWnd, bool IsPreview = false, bool IsCapture = false);
 };
 
 class CFGManagerDVD : public CFGManagerPlayer

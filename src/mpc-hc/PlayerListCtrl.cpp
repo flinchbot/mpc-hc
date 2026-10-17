@@ -50,6 +50,11 @@ END_MESSAGE_MAP()
 // CInPlaceHotKey message handlers
 BOOL CInPlaceWinHotkey::PreTranslateMessage(MSG* pMsg)
 {
+    if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_TAB) {
+        GetParent()->SetFocus();
+        return TRUE;
+    }
+
     if (pMsg->message == WM_KEYDOWN) {
         if (pMsg->wParam == VK_RETURN
                 || pMsg->wParam == VK_DELETE
@@ -133,6 +138,7 @@ BEGIN_MESSAGE_MAP(CInPlaceEdit, CEdit)
     ON_WM_NCDESTROY()
     ON_WM_CHAR()
     ON_WM_CREATE()
+    ON_WM_MOUSEWHEEL()
     //}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -186,6 +192,12 @@ void CInPlaceEdit::OnChar(UINT nChar, UINT nRepCnt, UINT nFlags)
     }
 
     CEdit::OnChar(nChar, nRepCnt, nFlags);
+}
+
+BOOL CInPlaceEdit::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+{
+    // eat the wheel: the edit doesn't use it, and returning FALSE lets it fall through to the main frame (volume by default)
+    return TRUE;
 }
 
 int CInPlaceEdit::OnCreate(LPCREATESTRUCT lpCreateStruct)
@@ -870,6 +882,12 @@ void CPlayerListCtrl::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 
 BOOL CPlayerListCtrl::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
+    // while a label or in-place edit is open, eat the wheel: taking focus would end the edit,
+    // and returning FALSE would pass the wheel on to the main frame (volume by default)
+    HWND hFocus = ::GetFocus();
+    if (hFocus && ::IsChild(m_hWnd, hFocus)) {
+        return TRUE;
+    }
     if (GetFocus() != this) {
         SetFocus();
     }
@@ -922,6 +940,17 @@ void CPlayerListCtrl::OnLButtonDown(UINT nFlags, CPoint point)
 }
 
 
+void CPlayerListCtrl::BeginInPlaceEdit(int nItem, int nSubItem)
+{
+    LV_DISPINFO dispinfo = {};
+    dispinfo.hdr.hwndFrom = m_hWnd;
+    dispinfo.hdr.idFrom = GetDlgCtrlID();
+    dispinfo.hdr.code = LVN_DOLABELEDIT;
+    dispinfo.item.iItem = nItem;
+    dispinfo.item.iSubItem = nSubItem;
+    GetParent()->SendMessage(WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&dispinfo);
+}
+
 void CPlayerListCtrl::OnTimer(UINT_PTR nIDEvent)
 {
     if (nIDEvent == m_nTimerID) {
@@ -930,13 +959,7 @@ void CPlayerListCtrl::OnTimer(UINT_PTR nIDEvent)
 
         UINT flag = LVIS_FOCUSED;
         if ((GetItemState(m_nItemClicked, flag) & flag) == flag && m_nSubItemClicked >= 0) {
-            LV_DISPINFO dispinfo = {};
-            dispinfo.hdr.hwndFrom = m_hWnd;
-            dispinfo.hdr.idFrom = GetDlgCtrlID();
-            dispinfo.hdr.code = LVN_DOLABELEDIT;
-            dispinfo.item.iItem = m_nItemClicked;
-            dispinfo.item.iSubItem = m_nSubItemClicked;
-            GetParent()->SendMessage(WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&dispinfo);
+            BeginInPlaceEdit(m_nItemClicked, m_nSubItemClicked);
         }
     } else if (nIDEvent == 43) {
         // CListCtrl does really strange things on this timer.

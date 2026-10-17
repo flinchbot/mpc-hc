@@ -56,6 +56,10 @@ struct CueTrackMeta {
     REFERENCE_TIME time = 0;
 };
 
+// Extract the file name from the FILE line of a cue sheet. Returns false when the
+// line is malformed, or when its type describes raw disc image data we cannot play.
+bool ParseCUEFileLine(CString str, CString& filename);
+
 class CPlayerPlaylistBar : public CMPCThemePlayerBar, public CDropClient
 {
     DECLARE_DYNAMIC(CPlayerPlaylistBar)
@@ -65,6 +69,7 @@ private:
 
     CMainFrame* m_pMainFrame;
     int inlineEditXpos;
+    int inlineEditItem;
     CMPCThemeInlineEdit m_edit;
 
     CFont m_font;
@@ -111,8 +116,11 @@ private:
     void SyncSelectionToPos(POSITION pos);
     void UpdateList();
     void EnsureVisible(POSITION pos);
+    bool ListHasGeometry() const;
+    bool m_bScrollToCurrentPending = false; // a scroll was deferred while the bar had no geometry
     int FindItem(const POSITION pos) const;
     POSITION FindPos(int i);
+    POSITION FindPosById(UINT id);
     void RebuildPosMap();
     void InvalidatePlayingItem(POSITION oldPos, POSITION newPos);
     std::unordered_map<POSITION, int> m_posToIndex;
@@ -129,7 +137,6 @@ private:
     bool m_bHiddenDueToFullscreen;
 
     CDropTarget m_dropTarget;
-    void OnDropFiles(CAtlList<CString>& slFiles, DROPEFFECT) override;
     DROPEFFECT OnDropAccept(COleDataObject*, DWORD, CPoint) override;
 
     CString m_playListPath;
@@ -144,6 +151,9 @@ public:
     virtual ~CPlayerPlaylistBar();
 
     BOOL Create(CWnd* pParentWnd, UINT defDockBarID);
+
+    // public so the main frame can hand over a drop that ole32 routed to it (#4265)
+    void OnDropFiles(CAtlList<CString>& slFiles, DROPEFFECT) override;
 
     virtual void ReloadTranslatableResources();
 
@@ -162,7 +172,7 @@ public:
     int GetSelIdx() const;
     void SetSelIdx(int i);
     bool IsAtEnd();
-    bool GetCur(CPlaylistItem& pli, bool check_fns = false) const;
+    bool GetCur(CPlaylistItem& pli, bool check_fns = false);
     CString GetCurFileName(bool use_ydl_source = false);
     CString GetCurFileNameTitle();
     bool SetNext();
@@ -170,6 +180,7 @@ public:
     void SetFirstSelected();
     void SetFirst();
     void SetLast();
+    void EnsureCurrentVisible();
     void SetCurValid(bool fValid);
     void SetCurLabel(CString label);
     void SetCurTime(REFERENCE_TIME rt);
@@ -208,6 +219,8 @@ protected:
 
 public:
     afx_msg void OnDestroy();
+    void SetListBkColor();
+    afx_msg LRESULT OnMPCThemeChanged(WPARAM wParam, LPARAM lParam);
     afx_msg void OnSize(UINT nType, int cx, int cy);
     afx_msg void OnLvnKeyDown(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnNMDblclkList(NMHDR* pNMHDR, LRESULT* pResult);

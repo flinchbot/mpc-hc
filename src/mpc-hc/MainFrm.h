@@ -54,6 +54,9 @@
 #include "FavoriteOrganizeDlg.h"
 #include "AllocatorCommon.h"
 #include <deque>
+#include <functional>
+#include <optional>
+#include <vector>
 
 class CDebugShadersDlg;
 class CColorControlsDlg;
@@ -62,6 +65,7 @@ class CFullscreenWnd;
 struct DisplayMode;
 enum MpcCaptionState;
 class CMediaTypesDlg;
+class RarEntrySelectorDialog;
 
 interface IDSMChapterBag;
 interface IGraphBuilder2;
@@ -72,6 +76,7 @@ interface IMadVRInfo;
 interface IMadVRFrameGrabber;
 interface IMadVRSettings;
 interface IMadVRSubclassReplacement;
+interface IMPCVRSubclassReplacement;
 interface ISubClock;
 interface ISubPicAllocatorPresenter2;
 interface ISubPicAllocatorPresenter;
@@ -302,6 +307,7 @@ private:
 
     CComPtr<IMadVRSettings> m_pMVRS;
     CComPtr<IMadVRSubclassReplacement> m_pMVRSR;
+    CComPtr<IMPCVRSubclassReplacement> m_pMPCVRSR;
     CComPtr<IMadVRCommand> m_pMVRC;
     CComPtr<IMadVRInfo> m_pMVRI;
     CComPtr<IMadVRFrameGrabber> m_pMVRFG;
@@ -332,6 +338,14 @@ private:
     void UpdateDXVAStatus();
 
     void SetVolumeBoost(UINT nAudioBoost);
+    // ReplayGain values found in the tags of the currently open file
+    struct ReplayGainInfo {
+        bool bHasTrackGain = false, bHasAlbumGain = false;
+        float fTrackGain = 0.0f, fAlbumGain = 0.0f; // dB
+        float fTrackPeak = 0.0f, fAlbumPeak = 0.0f; // 0 = unknown
+    } m_replayGain;
+    static bool ParseReplayGainValue(LPCWSTR str, float& value);
+    void ApplyReplayGain();
     void SetBalance(int balance);
 	
 	// temp fonts loader
@@ -450,6 +464,7 @@ private:
     void AddTextPassThruFilter();
 
     int m_nLoops;
+    bool m_bKeepLoopCountOnStop = false; // set before a skip that closes the file, so OnPlayStop keeps m_nLoops
     ABRepeat abRepeat, reloadABRepeat;
     UINT m_nLastSkipDirection;
 
@@ -477,6 +492,16 @@ private:
 
     ULONGLONG m_dwLastRun;
     int m_nLastAppendSelectionIndex; // playlist index where the current batch of redirected opens started
+
+    // A command line redirected from another instance, waiting to be acted on. OnCopyData only
+    // queues it, so that handler returns immediately instead of probing the filesystem while
+    // the sending instances wait on it.
+    struct PendingCommandLine {
+        CAtlList<CString> cmdln;
+        ULONGLONG tArrived = 0;
+    };
+    std::deque<PendingCommandLine> m_pendingCommandLines;
+    bool m_bProcessingCommandLine = false;
 
     bool m_bBuffering;
 
@@ -516,7 +541,9 @@ private:
     CString MakeSnapshotFileName(BOOL thumbnails);
     BOOL IsRendererCompatibleWithSaveImage();
     void SaveImage(LPCTSTR fn, bool displayed, bool includeSubtitles);
-    void SaveThumbnails(LPCTSTR fn);
+    // False when no sheet was written, including the failures that report
+    // nothing at all. A headless /thumbnails run exits non-zero on it.
+    bool SaveThumbnails(LPCTSTR fn);
 
     //
 
@@ -535,6 +562,66 @@ private:
     OAFilterState m_CachedFilterState;
 
     volatile LONG m_ActiveGraphNotifyEvCode = 0;
+    volatile bool m_OnClose_called = false;
+    volatile bool m_OnClose_queued = false;
+
+    // OnTimer, OnGraphNotify, OpenMedia, CloseMedia, OnClose and the MediaControl*
+    // functions hold graph interfaces across a possible nested message pump (a
+    // dialog raised inside them, or quartz pumping inside an IMediaControl call).
+    // Each holds one of these; while the depth is nonzero, OpenMedia, CloseMedia,
+    // OnClose and the handlers that close before they open are recorded below and
+    // run from the top-level pump once the outermost holder has returned, instead
+    // of underneath it. See DeferIfNested and OnRunDeferredActions.
+    class CDeferredActionScope {
+        CMainFrame& m_frame;
+    public:
+        explicit CDeferredActionScope(CMainFrame& frame);
+        ~CDeferredActionScope();
+    };
+    int m_nDeferredActionDepth = 0;
+    // requests recorded while a holder is on the stack, run in arrival order by
+    // OnRunDeferredActions. A recorded OnClose discards them and exits instead.
+    // Only the last Open or Close entry still matters when they run: an open
+    // closes first, and a close after an open makes that open pointless. Other
+    // entries (appends to the playlist) always run, or their items would be lost
+    enum class DeferredActionType { Close, Open, Other };
+    struct DeferredAction {
+        DeferredActionType type;
+        std::function<void()> run;
+    };
+    std::vector<DeferredAction> m_deferredActions;
+    bool m_bDeferredOnClose = false;
+    // the options sheet while ShowOptions has it up. Its modal pump is not a holder,
+    // since an open from in there is fine, but an exit would delete the frame under
+    // ShowOptions, so OnClose defers that one and cancels the sheet
+    CWnd* m_pOptionsSheet = nullptr;
+    bool DeferIfNested(DeferredActionType type, std::function<void()> action);
+
+    // a tracked popup or the menu bar is showing menus that a media change rebuilds
+    // (the stream, filter and recent submenus). Windows owns those popup windows
+    // while they are up, and emptying one frees the per item data it hands back to
+    // DrawItem. So while one is tracked an open or close is recorded like any other
+    // nested request, the menu is ended, and the rebuild runs from the top level
+    // pump with nothing on screen. See DeferIfNested.
+    class CTrackedMenuScope {
+        CMainFrame& m_frame;
+        // declared after m_frame, and destroyed only once the destructor body has
+        // run, so the tracked depth is already back down when this one posts
+        // WM_MPC_RUN_DEFERRED. Keep the order
+        CDeferredActionScope m_defer;
+    public:
+        explicit CTrackedMenuScope(CMainFrame& frame);
+        ~CTrackedMenuScope();
+    };
+    int m_nTrackedMenuDepth = 0;
+    // the menu bar's modal loop spans OnEnterMenuLoop and OnExitMenuLoop, so its
+    // scope cannot live on the stack like the tracked popups' ones do
+    std::optional<CTrackedMenuScope> m_menuBarMenuScope;
+
+    // bodies of OpenMedia and CloseMedia; the public wrappers record the request
+    // while a holder is on the stack, these always run
+    void OpenMediaInternal(CAutoPtr<OpenMediaData> pOMD);
+    void CloseMediaInternal(bool bNextIsQueued = false, bool bPendingFileDelete = false);
 
     bool m_bSettingUpMenus;
     volatile bool m_bOpenMediaActive;
@@ -546,6 +633,9 @@ private:
     void OnVideoSizeChanged(const bool bWasAudioOnly = false);
 
     CDropTarget m_dropTarget;
+    // client coordinates of the last OnDropAccept call; OnDropFiles gets no point
+    CPoint m_lastDropPoint;
+    bool IsPlaylistDropWhileDisabled(CPoint ptClient) const;
     void OnDropFiles(CAtlList<CStringW>& slFiles, DROPEFFECT dropEffect) override;
     DROPEFFECT OnDropAccept(COleDataObject* pDataObject, DWORD dwKeyState, CPoint point) override;
 
@@ -606,6 +696,7 @@ protected:
     bool m_bFirstPlay;
     bool m_bOpeningInAutochangedMonitorMode;
     bool m_bPausedForAutochangeMonitorMode;
+    bool m_bThemeChangePending;
     bool restoringWindowRect;
 
     bool m_fAudioOnly;
@@ -626,6 +717,7 @@ protected:
     int m_iDefRotation;
 
     void ForceCloseProcess();
+    void ThrowAndForceClose();
 
     // Operations
     bool OpenMediaPrivate(CAutoPtr<OpenMediaData> pOMD);
@@ -636,6 +728,7 @@ protected:
 
     CCritSec lockModalDialog;
     CMediaTypesDlg* mediaTypesErrorDlg;
+    RarEntrySelectorDialog* rarEntrySelectorDlg;
     void ShowMediaTypesDialog();
 
     void OpenCreateGraphObject(OpenMediaData* pOMD);
@@ -648,7 +741,7 @@ protected:
     void OpenSetupVideo();
     void OpenSetupAudio();
     void OpenSetupInfoBar(bool bClear = true);
-    void UpdateChapterInInfoBar();
+    bool UpdateChapterInInfoBar(bool bRecalcLayout = true);
     void OpenSetupStatsBar();
     void CheckSelectedAudioStream();
     void CheckSelectedVideoStream();
@@ -704,6 +797,15 @@ public:
     void StartTunerScan(CAutoPtr<TunerScanData> pTSD);
     void StopTunerScan();
     HRESULT SetChannel(int nChannel);
+
+    // Headless tuner scan, driven by /dvbscan rather than CTunerScanDlg.
+    // DoTunerScan reports through window messages, so this listens for them
+    // instead of the dialog and writes the result out. The scan engine itself
+    // is unchanged and unaware of which listener it is talking to.
+    bool m_bHeadlessDVBScan = false;
+    std::vector<CBDAChannel> m_headlessDVBScanChannels;
+    void StartHeadlessDVBScan();
+    void FinishHeadlessDVBScan();
 
     void AddCurDevToPlaylist();
 
@@ -950,6 +1052,7 @@ public:
     afx_msg void OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu);
     afx_msg void OnUnInitMenuPopup(CMenu* pPopupMenu, UINT nFlags);
     afx_msg void OnEnterMenuLoop(BOOL bIsTrackPopupMenu);
+    afx_msg void OnExitMenuLoop(BOOL bIsTrackPopupMenu);
 
     afx_msg BOOL OnQueryEndSession();
     afx_msg void OnEndSession(BOOL bEnding);
@@ -964,6 +1067,12 @@ public:
 
     afx_msg LRESULT OnFilePostOpenmedia(WPARAM wParam, LPARAM lparam);
     afx_msg LRESULT OnOpenMediaFailed(WPARAM wParam, LPARAM lParam);
+    afx_msg LRESULT OnRunDeferredActions(WPARAM wParam, LPARAM lParam);
+
+    // Only reached in headless scan mode: with the dialog running these go to
+    // it instead, because DoTunerScan sends to the HWND it was handed.
+    afx_msg LRESULT OnHeadlessScanNewChannel(WPARAM wParam, LPARAM lParam);
+    afx_msg LRESULT OnHeadlessScanEnd(WPARAM wParam, LPARAM lParam);
     void OnFilePostClosemedia(bool bNextIsQueued = false);
 
     afx_msg void OnBossKey();
@@ -995,6 +1104,8 @@ public:
     afx_msg void OnFileOpenmedia();
     afx_msg void OnUpdateFileOpen(CCmdUI* pCmdUI);
     afx_msg BOOL OnCopyData(CWnd* pWnd, COPYDATASTRUCT* pCopyDataStruct);
+    afx_msg LRESULT OnCommandLineReceived(WPARAM wParam, LPARAM lParam);
+    void ProcessCommandLine(CAtlList<CString>& cmdln, ULONGLONG tArrived);
     afx_msg void OnFileOpendvd();
     afx_msg void OnFileOpendevice();
     afx_msg void OnFileOpenOpticalDisk(UINT nID);
@@ -1296,6 +1407,7 @@ public:
 
     void        SetLoadState(MLS eState);
     MLS         GetLoadState() const;
+    void        QueueCommandLine(const CAtlList<CString>& cmdln);
     bool        IsStateLoaded();
     bool        IsStateLoadedOrLoading();
     bool        IsStateClosed();
@@ -1359,6 +1471,7 @@ protected:
     afx_msg void OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct);
     // GDI+
     virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
+    bool ForwardMessageToRenderer(HWND hWnd, UINT message, WPARAM& wParam, LPARAM& lParam, LRESULT& ret);
     void WTSRegisterSessionNotification();
     void WTSUnRegisterSessionNotification();
 
@@ -1373,6 +1486,7 @@ protected:
     void ClearArtFromViews();
 
     void UpdateUILanguage();
+    void ApplyThemeChange();
 
     bool PerformFlipRotate();
 
@@ -1468,6 +1582,7 @@ public:
     CHdmvClipInfo::BDMVMeta GetBDMVMeta();
 
     bool GetDecoderType(CString& type) const;
+    CString GetAudioInfo() const;
 
     static bool IsOnYDLWhitelist(const CString url);
 
@@ -1500,17 +1615,6 @@ public:
     ULONGLONG m_lastSMTCThumbnailTick = 0;
 #endif
 
-    enum themableDialogTypes {
-        None,
-        windowsFileDialog,
-    };
-    void enableFileDialogHook(CMPCThemeUtil* helper);
-    void enableDialogHook(CMPCThemeUtil* helper, themableDialogTypes type);
-private:
-    themableDialogTypes watchingDialog, foundDialog;
-    CMPCThemeUtil* dialogHookHelper;
-
-public:
     afx_msg void OnSettingChange(UINT uFlags, LPCTSTR lpszSection);
     afx_msg void OnMouseHWheel(UINT nFlags, short zDelta, CPoint pt);
 private:
