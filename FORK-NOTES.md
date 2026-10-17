@@ -36,18 +36,21 @@ These live outside the main repo and must be re-applied on a fresh machine:
      <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
    </PropertyGroup>
    ```
-2. **polib** (translation build) — `python -m pip install polib`
-3. **nasm + yasm** — not in stock MSYS2. Put `nasm.exe` (2.16.03, nasm.us) and `yasm.exe`
-   (1.3.0, tortall.net) in `C:\msys64\usr\bin` (on the build PATH).
-4. **maintainer mingw** (dual i686+x86_64 sysroot, files.1f0.de) — used by `update_mingwlib.bat`
-   for `libmingwex.a`/`libgcc.a` (both arches). Latest r44 = gcc 15.2. Extract to a dir and point
-   `MPCHC_MINGW32/64` at it (kept separate from stock MSYS2 mingw64 is fine).
-5. **build.user.bat** (gitignored) — set `MPCHC_WINSDK_VER`, `MPCHC_MSYS=C:\msys64`,
-   `MPCHC_MINGW32/64` = the maintainer mingw, `MSYSTEM=MINGW64`, `MSYS2_PATH_TYPE=inherit`.
+2. **Toolchain** — run `setup-toolchain.ps1` (elevates itself): VS 2026 Community with v143 +
+   ATL/MFC + Win11 SDK 26100 + clang-cl, `nasm.exe` 2.16.03 in `C:\Windows`, Python 3.13 + polib.
+3. **build.user.bat** (gitignored):
+   ```bat
+   SET "MPCHC_GIT=C:\Program Files\Git"
+   SET "MPCHC_PYTHON=C:\Program Files\Python313"
+   SET "MPCHC_WINSDK_VER=10.0.26100.0"
+   SET "MPCHC_LAV_TOOLCHAIN=MSVC"
+   ```
 
 ## Toolchain
-VS 2026 + **MSVC v143** toolset + **C++ MFC (v143)** + Windows 11 SDK (10.0.26100) ·
-MSYS2 (`make pkg-config diffutils`) · maintainer mingw-w64-gcc (dual sysroot) · YASM + NASM · polib.
+VS 2026 + **MSVC v143** toolset + **C++ MFC (v143)** + Windows 11 SDK (10.0.26100) · NASM · polib.
+Since the 2026-10 upstream sync, LAV Filters' ffmpeg builds with MSBuild (`MPCHC_LAV_TOOLCHAIN=MSVC`),
+so MSYS2, the maintainer mingw and YASM are no longer needed. The GCC route (docs\Compilation.md
+Part H) still works if `MPCHC_MSYS`/`MPCHC_MINGW*` are set; the MSYS-related quirks below apply only to it.
 
 ## Build
 ```
