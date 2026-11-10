@@ -548,6 +548,7 @@
 #define IDC_STATUSBAR                   12139
 #define IDC_PPAGECAPTURE_DESC1          12140
 #define IDC_DSMPCVR                     12141
+#define IDC_DSFRANKY                    12142
 #define IDS_SRC_VTS                     14002
 #define IDS_SRC_RFS                     14003
 #define IDS_INTERNAL_LAVF               14004
@@ -774,6 +775,7 @@
 #define IDC_MODERNSEEKBARHEIGHT         22092
 #define IDC_MODERNSEEKBARHEIGHT_SPIN    22093
 #define IDC_COLOR_CONTROLS              22103
+#define IDC_CHECK_ROUNDEDBOX            22104
 #define ID_SUB_DELAY_DOWN               24000
 #define ID_SUB_DELAY_UP                 24001
 #define IDS_MPLAYERC_104                24002
@@ -1529,6 +1531,7 @@
 #define IDS_NAVIGATE_CHANNELS           41465
 #define IDS_PPAGE_OUTPUT_MPCVR          41466
 #define IDS_PPAGE_OUTPUT_VMR7           41467
+#define IDS_PPAGE_OUTPUT_FRANKY         41468
 #define IDS_MOUSE_CLICK_MIDDLE          41702
 #define IDS_MOUSE_CLICK_X1              41703
 #define IDS_MOUSE_CLICK_X2              41704
@@ -1544,6 +1547,7 @@
 #define IDS_PPAGE_OUTPUT_SUPPORT_ALL_HDR 41715
 #define IDS_PPAGE_OUTPUT_SUPPORT_NO_HDR 41716
 #define IDS_PPAGE_OUTPUT_SUPPORT_LIMITED 41717
+#define IDS_PPAGE_OUTPUT_SUPPORT_FRANKY 41718
 #define IDS_PPAGE_CAPTURE_FG0           57345
 #define IDS_PPAGE_CAPTURE_FG1           57346
 #define IDS_PPAGE_CAPTURE_FG2           57347
@@ -1903,6 +1907,7 @@
 #define IDS_MODERN_THEME_STYLE_FOLLOW_OS 58059
 #define IDS_MODERN_THEME_STYLE_WINDOWS10 58060
 #define IDS_MODERN_THEME_STYLE_WINDOWS11 58061
+#define IDS_PPAGEADVANCED_SUB_GLYPH_CACHE_MB 58062
 
 // Next default values for new objects
 // 
@@ -1910,7 +1915,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        20079
 #define _APS_NEXT_COMMAND_VALUE         33465
-#define _APS_NEXT_CONTROL_VALUE         22104
+#define _APS_NEXT_CONTROL_VALUE         22105
 #define _APS_NEXT_SYMED_VALUE           24052
 #endif
 #endif

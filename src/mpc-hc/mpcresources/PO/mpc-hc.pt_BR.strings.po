@@ -761,6 +761,10 @@ msgctxt "IDS_PPAGE_OUTPUT_MPCVR"
 msgid "MPC Video Renderer"
 msgstr "Renderizador de Vídeo do MPC"
 
+msgctxt "IDS_PPAGE_OUTPUT_FRANKY"
+msgid "FrankyRenderer"
+msgstr ""
+
 msgctxt "IDS_PPAGE_OUTPUT_VMR7"
 msgid "Video Mixing Renderer 7"
 msgstr "Renderizador de Mistura do Vídeo 7"
@@ -980,6 +984,10 @@ msgstr ""
 "Suporta todas as funcionalidades do player tais como legendas, pixelshaders e rotação.\n"
 "Pode utilizar o D3D9 ou D3D11."
 
+msgctxt "IDC_DSFRANKY"
+msgid "Advanced video renderer that uses libplacebo."
+msgstr ""
+
 msgctxt "IDS_PPAGE_OUTPUT_SYNC"
 msgid "Sync Renderer"
 msgstr "Sincronizar o Renderizador"
@@ -1043,6 +1051,10 @@ msgstr "Suporta todas as funcionalidades do player, exceto vídeo HDR."
 msgctxt "IDS_PPAGE_OUTPUT_SUPPORT_LIMITED"
 msgid "Does not support all player functionality."
 msgstr "Não suporta toda a funcionalidade do player."
+
+msgctxt "IDS_PPAGE_OUTPUT_SUPPORT_FRANKY"
+msgid "Supports all player functionality, except pixelshaders."
+msgstr ""
 
 msgctxt "IDS_PPAGE_OUTPUT_AUD_NULL_COMP"
 msgid "Null (anything)"
@@ -5010,6 +5022,12 @@ msgctxt "IDS_PPAGEADVANCED_PAUSE_WHILE_DRAGGING_SEEKBAR"
 msgid "Pause playback while dragging the seekbar."
 msgstr "Pausar a reprodução enquanto arrasta a barra de busca."
 
+msgctxt "IDS_PPAGEADVANCED_PAUSE_WHEN_MINIMIZED"
+msgid ""
+"Pause video playback when the player is minimized, and resume it when the "
+"player is restored. Audio files keep playing."
+msgstr ""
+
 msgctxt "IDS_PPAGEADVANCED_CONFIRM_FILE_DELETE"
 msgid "Show confirmation prompt before deleting file"
 msgstr "Mostrar o alerta de confirmação antes de apagar o arquivo"
@@ -5494,6 +5512,12 @@ msgstr ""
 
 msgctxt "IDS_MODERN_THEME_STYLE_WINDOWS11"
 msgid "Windows 11"
+msgstr ""
+
+msgctxt "IDS_PPAGEADVANCED_SUB_GLYPH_CACHE_MB"
+msgid ""
+"Subtitle glyph cache limit in MB. The internal subtitle renderer's cache "
+"grows up to this limit on scripts that need it."
 msgstr ""
 
 msgctxt "IDS_AUDIO_BOOST_WARNING"
