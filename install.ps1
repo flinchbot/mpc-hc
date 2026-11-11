@@ -68,6 +68,19 @@ try {
         $count++
     }
 
+    # LAVFilters64 is fully build-owned (user-kept extras live at the root), so prune
+    # files there that the build no longer ships — e.g. old versioned ffmpeg dlls.
+    $lavSrc = Join-Path $Source 'LAVFilters64'
+    $lavDst = Join-Path $Destination 'LAVFilters64'
+    if ((Test-Path $lavSrc) -and (Test-Path $lavDst)) {
+        Get-ChildItem -Path $lavDst -Recurse -File | Where-Object {
+            -not (Test-Path (Join-Path $lavSrc $_.FullName.Substring($lavDst.Length).TrimStart('\')))
+        } | ForEach-Object {
+            Write-Host "  removing stale $($_.Name)"
+            Remove-Item -LiteralPath $_.FullName -Force
+        }
+    }
+
     Write-Host "Done: $count files copied." -ForegroundColor Green
 }
 catch {

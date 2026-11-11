@@ -65,6 +65,12 @@ copies the build into `C:\Program Files\MPC-HC`, overwriting the old build. It e
 closes a running player, keeps files only in the install folder (MPCVR, Shaders, uninstaller)
 and skips `*.pdb/*.exp/*.lib/*.ilk`.
 
+**After every build**, deploy to the share: `powershell -ExecutionPolicy Bypass -File deploy.ps1`
+mirrors the runtime files (no debug leftovers) plus `install.ps1` to **`Z:\Apps\mpc-hc`**, making
+the share a self-contained installer — on any machine, run
+`powershell -ExecutionPolicy Bypass -File Z:\Apps\mpc-hc\install.ps1` to install from it
+(`install.ps1` installs from its own folder when it sits next to `mpc-hc64.exe`).
+
 ### VS 2026 asm quirk (parallel build)
 Under VS 2026's MSBuild with `/maxcpucount`, the custom YASM/NASM tasks spuriously fail
 ("exited with code 1") on the first not-yet-built `.asm`/`.asm64` in each asm project, though the
